@@ -165,27 +165,22 @@ app.post("/passive-writing", (req, res) => {
 
     const data = readPassiveData();
 
-    // Create session if not exists
+    // If session doesn't exist → create it
     if (!data[session_id]) {
       data[session_id] = {
         created_at: new Date().toISOString(),
-        versions: [],
       };
     }
 
-    const newVersion = {
-      version_id: data[session_id].versions.length + 1,
-      content,
-      timestamp: new Date().toISOString(),
-    };
-
-    data[session_id].versions.push(newVersion);
+    // Overwrite content every time
+    data[session_id].content = content;
+    data[session_id].updated_at = new Date().toISOString();
 
     writePassiveData(data);
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      version: newVersion,
+      session: data[session_id],
     });
 
   } catch (err) {
