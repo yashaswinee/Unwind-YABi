@@ -67,6 +67,7 @@ export default function Journal() {
   const [messages, setMessages] = useState(aiMessages);
   const [view, setView] = useState<View>("chat");
   const [journalLogs, setJournalLogs] = useState<JournalLog[]>([]);
+  const [isPassiveSaved, setIsPassiveSaved] = useState(false);  
   const [sessionId, setSessionId] = useState<string>(() => {
     const newId = crypto.randomUUID();
     localStorage.setItem("journal_session_id", newId);
@@ -125,14 +126,15 @@ export default function Journal() {
     }).catch((err) => console.warn("Backend save failed:", err));
   };
 
-  const savePassiveWriting = (content: string) => {
+  const savePassiveWriting = (content: string, sid?: string) => {
+    const id = sid ?? passiveSessionId;
     fetch("http://localhost:5000/passive-writing", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        session_id: passiveSessionId,
+        session_id: id,
         content,
       }),
     }).catch((err) => console.warn("Passive writing save failed:", err));
@@ -362,17 +364,27 @@ export default function Journal() {
                   rows={4}
                 />
                 <div className="flex justify-end mt-2">
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      if (entry.trim()) {
-                        savePassiveWriting(entry.trim());
-                      }
-                    }}
-                    className="rounded-xl"
+                <Button
+                  size="sm"
+                  disabled={isPassiveSaved}
+                  variant={isPassiveSaved ? "outline" : "default"}
+                  onClick={() => {
+                    if (entry.trim()) {
+                      savePassiveWriting(entry.trim());
+                      setIsPassiveSaved(true);
+                      setTimeout(() => {
+                        setIsPassiveSaved(false);
+                      }, 3000);
+                    }
+                  }}
+                  className={`rounded-xl transition-all duration-300 ${
+                    isPassiveSaved
+                      ? "border-green-500 text-green-600 bg-green-50 opacity-100 disabled:opacity-100"
+                      : ""
+                  }`}
                   >
-                    Save Entry
-                  </Button>
+                    {isPassiveSaved ? "✓ Saved" : "Save Entry"}
+                </Button>
                 </div>
               </div>
               <NotebookView />
