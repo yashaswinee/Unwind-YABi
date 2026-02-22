@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, Pencil, Type, Camera, MessageCircle, Volume2, VolumeX, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import AppLayout from "@/components/AppLayout";
 import NotebookView from "@/components/journal/NotebookView";
 import ChatHistory from "@/components/journal/ChatHistory";
 import DynamicSuggestions from "@/components/journal/DynamicSuggestions";
+import { getGeminiResponse } from "./Gemini_api";
 
 type InputMode = "text" | "voice" | "draw" | "photo";
 type AiMode = "quiet" | "active";
@@ -13,8 +14,50 @@ type View = "chat" | "notebook" | "history";
 
 type ChatMessage = { role: "ai" | "user"; text: string };
 
+export type JournalLog = {
+  date: string;
+  time: string;   
+  text: string;   
+};
+
+const JOURNAL_LOGS_KEY = "journal_user_logs";
+
+function loadLogs(): JournalLog[] {
+  try {
+    const raw = localStorage.getItem(JOURNAL_LOGS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLog(log: JournalLog) {
+  const logs = loadLogs();
+  logs.push(log);
+  localStorage.setItem(JOURNAL_LOGS_KEY, JSON.stringify(logs));
+}
+
+function exportLogsAsCSV() {
+  const logs = loadLogs();
+  if (logs.length === 0) return;
+
+  const header = "Date,Time,Message";
+  const rows = logs.map(
+    (log) => `${log.date},${log.time},"${log.text.replace(/"/g, '""')}"`
+  );
+  const csv = [header, ...rows].join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `journal_logs_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 const aiMessages: ChatMessage[] = [
-  { role: "ai", text: "Hey, welcome back. How are you feeling right now? No right answer — just check in with yourself." },
+  { role: "ai", text: "Hey, welcome back. How are you feeling today?" },
 ];
 
 export default function Journal() {
@@ -23,6 +66,7 @@ export default function Journal() {
   const [entry, setEntry] = useState("");
   const [messages, setMessages] = useState(aiMessages);
   const [view, setView] = useState<View>("chat");
+  const [journalLogs, setJournalLogs] = useState<JournalLog[]>([]);
 
   const inputModes: { mode: InputMode; icon: typeof Type; label: string }[] = [
     { mode: "text", icon: Type, label: "Write" },
@@ -31,17 +75,55 @@ export default function Journal() {
     { mode: "photo", icon: Camera, label: "Photo" },
   ];
 
-  const handleSend = () => {
+  useEffect(() => {
+    // Load previous journal logs from localStorage
+    setJournalLogs(loadLogs());
+
+    getGeminiResponse("Give a short, warm motivational greeting for someone journaling about their mental health well-being. Keep it to 1-2 sentences.")
+      .then((text) => {
+        setMessages([{ role: "ai", text }]);
+      })
+      .catch(() => {
+        setMessages([
+          { role: "ai", text: "Hey, welcome back. How are you feeling today?" },
+        ]);
+      });
+  }, []);
+  
+
+  const handleSend = async () => {
     if (!entry.trim()) return;
-    setMessages((prev) => [
-      ...prev,
-      { role: "user" as const, text: entry },
-      {
-        role: "ai" as const,
-        text: "I hear you. It sounds like there's a lot on your mind today. Can you tell me more about what's weighing on you the most?",
-      },
-    ]);
+    const userMessage = entry;
+
+    // Log the user's message with date and time
+    const now = new Date();
+    const log: JournalLog = {
+      date: now.toLocaleDateString("en-CA"),               // "2026-02-22"
+      time: now.toLocaleTimeString("en-GB", { hour12: false }), // "14:35:07"
+      text: userMessage,
+    };
+    saveLog(log);
+    setJournalLogs((prev) => [...prev, log]);
+
+    setMessages((prev) => [...prev, { role: "user" as const, text: userMessage }]);
     setEntry("");
+
+    try {
+      const aiText = await getGeminiResponse(
+        "You are a compassionate and empathetic mental health journal companion. The user said: \"" +
+        userMessage +
+        "\". Respond with a thoughtful, supportive, and brief reply (2-3 sentences). Acknowledge their feelings, ask a gentle follow-up question if appropriate, and maintain a warm conversational tone."
+      );
+      setMessages((prev) => [...prev, { role: "ai" as const, text: aiText }]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "ai" as const,
+          text: "I hear you. It sounds like there's a lot on your mind today. Can you tell me more about what's weighing on you the most?",
+        },
+      ]);
+    }
   };
 
   const handleResumeChat = (sessionId: string) => {
