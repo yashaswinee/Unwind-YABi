@@ -67,9 +67,11 @@ export default function Journal() {
   const [messages, setMessages] = useState(aiMessages);
   const [view, setView] = useState<View>("chat");
   const [journalLogs, setJournalLogs] = useState<JournalLog[]>([]);
-  const [sessionId] = useState<string>(
-    () => localStorage.getItem("journal_session_id") || crypto.randomUUID()
-  );
+  const [sessionId, setSessionId] = useState<string>(() => {
+    const newId = crypto.randomUUID();
+    localStorage.setItem("journal_session_id", newId);
+    return newId;
+  });
 
   // Persist session id so it survives page reloads
   useEffect(() => {
@@ -90,14 +92,30 @@ export default function Journal() {
     getGeminiResponse("Give a short, warm motivational greeting for someone journaling about their mental health well-being. Keep it to 1-2 sentences.")
       .then((text) => {
         setMessages([{ role: "ai", text }]);
+        // Persist the AI greeting to backend
+        saveMessageToBackend("ai", text, sessionId);
       })
       .catch(() => {
-        setMessages([
-          { role: "ai", text: "Hey, welcome back. How are you feeling today?" },
-        ]);
+        const fallback = "Hey, welcome back. How are you feeling today?";
+        setMessages([{ role: "ai", text: fallback }]);
+        saveMessageToBackend("ai", fallback, sessionId);
       });
   }, []);
   
+
+  const saveMessageToBackend = (role: "user" | "ai", text: string, sid: string) => {
+    fetch("http://localhost:5000/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        session_id: sid,
+        role,
+        text,
+      }),
+    }).catch((err) => console.warn("Backend save failed:", err));
+  };
 
   const handleSend = async () => {
     if (!entry.trim()) return;
@@ -113,17 +131,8 @@ export default function Journal() {
     saveLog(log);
     setJournalLogs((prev) => [...prev, log]);
 
-    // Persist to backend
-    fetch("http://localhost:5000/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        session_id: sessionId,
-        user_text: userMessage,
-      }),
-    }).catch((err) => console.warn("Backend save failed:", err));
+    // Persist user message to backend
+    saveMessageToBackend("user", userMessage, sessionId);
 
     setMessages((prev) => [...prev, { role: "user" as const, text: userMessage }]);
     setEntry("");
@@ -135,30 +144,75 @@ export default function Journal() {
         "\". Respond with a thoughtful, supportive, and brief reply (2-3 sentences). Acknowledge their feelings, ask a gentle follow-up question if appropriate, and maintain a warm conversational tone."
       );
       setMessages((prev) => [...prev, { role: "ai" as const, text: aiText }]);
+
+      // Persist AI response to backend
+      saveMessageToBackend("ai", aiText, sessionId);
     } catch {
+      const fallbackText =
+        "I hear you. It sounds like there's a lot on your mind today. Can you tell me more about what's weighing on you the most?";
       setMessages((prev) => [
         ...prev,
-        {
-          role: "ai" as const,
-          text: "I hear you. It sounds like there's a lot on your mind today. Can you tell me more about what's weighing on you the most?",
-        },
+        { role: "ai" as const, text: fallbackText },
       ]);
+
+      // Persist fallback AI response to backend
+      saveMessageToBackend("ai", fallbackText, sessionId);
     }
   };
 
-  const handleResumeChat = (sessionId: string) => {
-    // Mock: load a previous session's messages
-    setMessages([
-      { role: "ai", text: "Welcome back. Last time we talked about feeling overwhelmed after your sprint. How have things been since then?" },
-      { role: "user", text: "Still tough. The workload hasn't changed much." },
-      { role: "ai", text: "That's hard. When you say the workload hasn't changed — is it the volume, or the emotional weight of the tasks?" },
-    ]);
+  const handleResumeChat = async (resumeSessionId: string) => {
+    try {
+      const res = await fetch(
+        `http://localhost:5000/messages/${resumeSessionId}`
+      );
+
+      const sessionData = await res.json();
+
+      if (sessionData?.messages?.length > 0) {
+        setSessionId(resumeSessionId);
+        localStorage.setItem("journal_session_id", resumeSessionId);
+
+        setMessages(
+          sessionData.messages.map((m: any) => ({
+            role: m.role || "user",
+            text: m.text,
+          }))
+        );
+      } else {
+        setMessages([
+          {
+            role: "ai",
+            text: "Welcome back! This session has no messages yet.",
+          },
+        ]);
+      }
+    } catch {
+      setMessages([
+        {
+          role: "ai",
+          text:
+            "Welcome back. I couldn't load the previous session. Let's start fresh.",
+        },
+      ]);
+    }
+
     setView("chat");
     setAiMode("active");
   };
 
-  const handleStartNewChat = () => {
-    setMessages(aiMessages);
+    const handleStartNewChat = async () => {
+    const newSessionId = crypto.randomUUID();
+    setSessionId(newSessionId);
+    console.log("NEW SESSION ID: ", newSessionId);
+    localStorage.setItem("journal_session_id", newSessionId);
+
+    // Reset messages with fresh AI greeting
+    const greeting = "Hey, welcome back. How are you feeling today?";
+    setMessages([{ role: "ai", text: greeting }]);
+
+    // Save greeting to backend under new session
+    saveMessageToBackend("ai", greeting, newSessionId);
+
     setView("chat");
     setAiMode("active");
   };
@@ -196,7 +250,7 @@ export default function Journal() {
         {aiMode === "active" && (
           <div className="flex gap-2">
             <button
-              onClick={() => { setView("chat"); }}
+              onClick={() => { handleStartNewChat() }}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 view === "chat"
                   ? "bg-primary text-primary-foreground shadow-soft"
