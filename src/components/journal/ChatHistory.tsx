@@ -22,15 +22,19 @@ export default function ChatHistory({
       .then((data) => {
         const formatted: Session[] = Object.entries(data).map(
           ([session_id, value]: any) => {
-            const date = new Date(value.created_at);
-            const day = date.getDate();
-            const month = date.toLocaleString('default', { month: 'long' });
-
+            const messages = value.messages || [];
+            const firstUser = messages.find((m: { role: string }) => m.role === "user");
+            const raw = firstUser?.text?.trim() ?? "";
+            const contextTitle = raw
+              ? raw.length > 56
+                ? raw.slice(0, 56).trim() + "…"
+                : raw
+              : value.title || "New conversation";
             return {
               session_id,
-              title: value.title || `${day} ${month}`,
+              title: contextTitle,
               created_at: value.created_at,
-              messages: value.messages || [],
+              messages,
             };
           }
         );
@@ -77,13 +81,19 @@ export default function ChatHistory({
             onClick={() => onResume(session.session_id)}
             className="p-4 rounded-xl border border-border bg-card cursor-pointer hover:shadow-md transition-all"
           >
-            <h3 className="text-sm font-semibold">
+            <h3 className="text-sm font-semibold text-foreground">
               {session.title}
             </h3>
 
             <p className="text-xs text-muted-foreground mt-1">
-              {new Date(session.created_at).toLocaleDateString()} •{" "}
-              {session.messages.filter((msg) => msg.role === "user").length} messages
+              {new Date(session.created_at).toLocaleDateString(undefined, {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}{" "}
+              • {session.messages.filter((msg) => msg.role === "user").length} messages
             </p>
           </div>
         ))}

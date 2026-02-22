@@ -79,6 +79,15 @@ app.post("/messages", (req, res) => {
 
     data[session_id].messages.push(newMessage);
 
+    // Use first user message as session title (context) instead of date
+    const userMessages = data[session_id].messages.filter((m) => m.role === "user");
+    if (userMessages.length === 1) {
+      const trimmed = text.trim();
+      const maxLen = 56;
+      data[session_id].title =
+        trimmed.length > maxLen ? trimmed.slice(0, maxLen).trim() + "…" : trimmed || data[session_id].title;
+    }
+
     writeData(data);
 
     res.status(201).json({
