@@ -73,6 +73,14 @@ export default function Journal() {
     return newId;
   });
 
+  const [passiveSessionId, setPassiveSessionId] = useState<string>(() => {
+    const existing = localStorage.getItem("passive_session_id");
+    if (existing) return existing;
+    const newId = crypto.randomUUID();
+    localStorage.setItem("passive_session_id", newId);
+    return newId;
+  });
+
   // Persist session id so it survives page reloads
   useEffect(() => {
     localStorage.setItem("journal_session_id", sessionId);
@@ -115,6 +123,19 @@ export default function Journal() {
         text,
       }),
     }).catch((err) => console.warn("Backend save failed:", err));
+  };
+
+  const savePassiveWriting = (content: string) => {
+    fetch("http://localhost:5000/passive-writing", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        session_id: passiveSessionId,
+        content,
+      }),
+    }).catch((err) => console.warn("Passive writing save failed:", err));
   };
 
   const handleSend = async () => {
@@ -265,11 +286,29 @@ export default function Journal() {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 view === "history"
                   ? "bg-primary text-primary-foreground shadow-soft"
-                  : "bg-secondary text-secondary-foreground hover:bg-accent"
+                  : "bg-secondary text-secondatoggleAiModery-foreground hover:bg-accent"
               }`}
             >
               <MessageCircle className="w-4 h-4" />
               Continue Chat
+            </button>
+          </div>
+        )}
+
+        {/* New chat button for quiet/passive mode */}
+        {aiMode === "quiet" && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setEntry("");
+                const newId = crypto.randomUUID();
+                setPassiveSessionId(newId);
+                localStorage.setItem("passive_session_id", newId);
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-primary text-primary-foreground shadow-soft hover:opacity-90"
+            >
+              <Plus className="w-4 h-4" />
+              New Chat
             </button>
           </div>
         )}
@@ -325,7 +364,11 @@ export default function Journal() {
                 <div className="flex justify-end mt-2">
                   <Button
                     size="sm"
-                    onClick={() => { if (entry.trim()) setEntry(""); }}
+                    onClick={() => {
+                      if (entry.trim()) {
+                        savePassiveWriting(entry.trim());
+                      }
+                    }}
                     className="rounded-xl"
                   >
                     Save Entry
