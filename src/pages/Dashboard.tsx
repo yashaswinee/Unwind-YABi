@@ -67,7 +67,7 @@ export default function Dashboard() {
       label: "Entries",
       value: insights ? String(insights.entriesCount) : "—",
       icon: Clock,
-      change: "total writings",
+      change: "chat + passive + dataset",
     },
     {
       label: "Streak",
@@ -97,7 +97,7 @@ export default function Dashboard() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-serif text-foreground">Your Mind, Over Time</h1>
-            <p className="text-sm text-muted-foreground">Patterns from your journal &amp; passive writing</p>
+            <p className="text-sm text-muted-foreground">From your journal: continue chat messages, passive logs, and any dataset — entries count reflects all of these</p>
           </div>
           <Button
             variant="outline"

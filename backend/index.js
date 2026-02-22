@@ -12,6 +12,7 @@ const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, "data");
 const FILE_PATH = path.join(DATA_DIR, "chat-log.json");
 const PASSIVE_FILE_PATH = path.join(DATA_DIR, "passive-writing.json");
+const SCHEDULED_MEETS_PATH = path.join(DATA_DIR, "scheduled-meets.json");
 
 const app = express();
 app.use(express.json())
@@ -224,6 +225,61 @@ app.get("/api/signals", (req, res) => {
   } catch (err) {
     console.error("GET /api/signals error:", err);
     res.status(500).json({ error: "Failed to get signals", signals: [] });
+  }
+});
+
+// -----------------------------------------------------------------------------------------------------
+// Scheduled meets (Care Plan – from Counsellors "Schedule Meet")
+// -----------------------------------------------------------------------------------------------------
+
+function readScheduledMeets() {
+  try {
+    if (!fs.existsSync(SCHEDULED_MEETS_PATH)) return [];
+    const raw = fs.readFileSync(SCHEDULED_MEETS_PATH, "utf-8").trim();
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error("readScheduledMeets error:", err);
+    return [];
+  }
+}
+
+function writeScheduledMeets(list) {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(SCHEDULED_MEETS_PATH, JSON.stringify(list, null, 2));
+}
+
+app.get("/api/scheduled-meets", (req, res) => {
+  try {
+    const meets = readScheduledMeets();
+    res.json({ meets });
+  } catch (err) {
+    console.error("GET /api/scheduled-meets error:", err);
+    res.status(500).json({ error: "Failed to get scheduled meets", meets: [] });
+  }
+});
+
+app.post("/api/scheduled-meets", (req, res) => {
+  try {
+    const { counsellorName, datetime } = req.body;
+    if (!counsellorName || !datetime) {
+      return res.status(400).json({ error: "counsellorName and datetime are required" });
+    }
+    const meets = readScheduledMeets();
+    const newMeet = {
+      id: crypto.randomUUID(),
+      counsellorName: String(counsellorName),
+      datetime: String(datetime),
+      createdAt: new Date().toISOString(),
+    };
+    meets.push(newMeet);
+    meets.sort((a, b) => (a.datetime || "").localeCompare(b.datetime || ""));
+    writeScheduledMeets(meets);
+    res.status(201).json({ success: true, meet: newMeet });
+  } catch (err) {
+    console.error("POST /api/scheduled-meets error:", err);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

@@ -15,6 +15,7 @@ const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, "..", "data");
 const CHAT_PATH = path.join(DATA_DIR, "chat-log.json");
 const PASSIVE_PATH = path.join(DATA_DIR, "passive-writing.json");
+const DATASET_PATH = path.join(DATA_DIR, "dataset.json");
 const INSIGHTS_CACHE_PATH = path.join(DATA_DIR, "insights-cache.json");
 const SIGNALS_PATH = path.join(DATA_DIR, "signals.json");
 
@@ -135,10 +136,11 @@ function analyzeText(text) {
   };
 }
 
-/** Collect all user text from chat + passive with timestamps. */
+/** Collect all user text from chat, passive, and optional dataset.json. */
 function collectUserWritings(chatLog, passiveData) {
   const entries = [];
 
+  // Continue chat: every user message counts as one entry
   for (const [sessionId, session] of Object.entries(chatLog || {})) {
     const messages = session.messages || [];
     for (const msg of messages) {
@@ -153,6 +155,7 @@ function collectUserWritings(chatLog, passiveData) {
     }
   }
 
+  // Passive logs: one entry per session that has content
   for (const [sessionId, rec] of Object.entries(passiveData || {})) {
     const content = rec.content;
     if (content && typeof content === "string") {
@@ -162,6 +165,23 @@ function collectUserWritings(chatLog, passiveData) {
         text: content,
         timestamp: rec.updated_at || rec.created_at,
       });
+    }
+  }
+
+  // Optional dataset.json: array of { text, timestamp } (e.g. imported or seed data)
+  const dataset = readJson(DATASET_PATH, null);
+  if (Array.isArray(dataset)) {
+    for (const item of dataset) {
+      const text = item.text || item.content;
+      const timestamp = item.timestamp || item.date || item.updated_at;
+      if (text && typeof text === "string") {
+        entries.push({
+          source: "dataset",
+          sessionId: item.sessionId || "dataset",
+          text,
+          timestamp: timestamp || new Date().toISOString(),
+        });
+      }
     }
   }
 
@@ -382,7 +402,7 @@ function persistSignals(newSignals) {
 export function computeInsights() {
   const chatLog = readJson(CHAT_PATH);
   const passiveData = readJson(PASSIVE_PATH);
-
+  // Entries = continue chat (user messages) + passive logs + optional dataset.json
   const entries = collectUserWritings(chatLog, passiveData);
   const byDay = aggregateByDay(entries);
 

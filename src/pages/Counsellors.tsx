@@ -1,7 +1,19 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
 import { Play, Calendar, MessageCircle, Shield, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { createScheduledMeet } from "@/lib/careApi";
+import { toast } from "@/components/ui/sonner";
 
 const counsellors = [
   {
@@ -34,6 +46,42 @@ const counsellors = [
 ];
 
 export default function Counsellors() {
+  const navigate = useNavigate();
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [selectedCounsellor, setSelectedCounsellor] = useState<string | null>(null);
+  const [scheduleDateTime, setScheduleDateTime] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+
+  const handleMessage = () => {
+    navigate("/care#message");
+  };
+
+  const handleScheduleMeet = (counsellorName: string) => {
+    setSelectedCounsellor(counsellorName);
+    setScheduleDateTime("");
+    setScheduleOpen(true);
+  };
+
+  const handleScheduleSubmit = async () => {
+    if (!selectedCounsellor || !scheduleDateTime.trim()) {
+      toast.error("Please select date and time");
+      return;
+    }
+    setScheduling(true);
+    try {
+      await createScheduledMeet(selectedCounsellor, scheduleDateTime);
+      toast.success("Meeting scheduled. View it on your Care Plan.");
+      setScheduleOpen(false);
+      setSelectedCounsellor(null);
+      setScheduleDateTime("");
+      navigate("/care");
+    } catch {
+      toast.error("Failed to schedule. Try again.");
+    } finally {
+      setScheduling(false);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="container max-w-4xl mx-auto px-4 py-8 space-y-8">
@@ -104,11 +152,20 @@ export default function Counsellors() {
                     <Play className="w-3.5 h-3.5" />
                     Watch Intro
                   </Button>
-                  <Button size="sm" className="gap-2 rounded-xl">
+                  <Button
+                    size="sm"
+                    className="gap-2 rounded-xl"
+                    onClick={() => handleScheduleMeet(c.name)}
+                  >
                     <Calendar className="w-3.5 h-3.5" />
                     Schedule Meet
                   </Button>
-                  <Button variant="ghost" size="sm" className="gap-2 rounded-xl">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 rounded-xl"
+                    onClick={handleMessage}
+                  >
                     <MessageCircle className="w-3.5 h-3.5" />
                     Message
                   </Button>
@@ -118,6 +175,35 @@ export default function Counsellors() {
           ))}
         </div>
       </div>
+
+      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Schedule a meeting</DialogTitle>
+            <DialogDescription>
+              {selectedCounsellor ? `Pick date and time for your session with ${selectedCounsellor}.` : "Pick date and time."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <label className="text-sm font-medium text-foreground">Date & time</label>
+            <input
+              type="datetime-local"
+              value={scheduleDateTime}
+              onChange={(e) => setScheduleDateTime(e.target.value)}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              min={new Date().toISOString().slice(0, 16)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScheduleOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleScheduleSubmit} disabled={scheduling}>
+              {scheduling ? "Scheduling…" : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

@@ -1,7 +1,11 @@
+import { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
-import { CheckCircle2, Circle, MessageCircle, Trophy, Target, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle2, Circle, MessageCircle, Trophy, Target, ArrowRight, Calendar } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchScheduledMeets } from "@/lib/careApi";
+import { format } from "date-fns";
 
 const actionItems = [
   { id: 1, text: "Log off at 6 PM twice this week", done: true, counsellor: "Dr. Priya Sharma" },
@@ -26,12 +30,34 @@ const chatMessages = [
 
 export default function CarePlan() {
   const [items, setItems] = useState(actionItems);
+  const location = useLocation();
+  const messageSectionRef = useRef<HTMLDivElement>(null);
+
+  const { data: meets = [] } = useQuery({
+    queryKey: ["scheduled-meets"],
+    queryFn: fetchScheduledMeets,
+  });
+
+  useEffect(() => {
+    if (location.hash === "#message" && messageSectionRef.current) {
+      messageSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [location.hash]);
 
   const toggleItem = (id: number) => {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, done: !item.done } : item)));
   };
 
   const completedCount = items.filter((i) => i.done).length;
+
+  function formatMeetDate(iso: string) {
+    try {
+      const d = new Date(iso);
+      return format(d, "EEE, MMM d, yyyy 'at' h:mm a");
+    } catch {
+      return iso;
+    }
+  }
 
   return (
     <AppLayout>
@@ -40,6 +66,26 @@ export default function CarePlan() {
           <h1 className="text-2xl font-serif text-foreground">Your Care Plan</h1>
           <p className="text-sm text-muted-foreground">Collaborative goals between you and your counsellor</p>
         </div>
+
+        {meets.length > 0 && (
+          <div className="bg-card rounded-2xl border border-border p-6 shadow-card">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="w-5 h-5 text-primary" />
+              <h2 className="font-serif text-lg text-foreground">Scheduled meetings</h2>
+            </div>
+            <ul className="space-y-2">
+              {meets.map((m) => (
+                <li
+                  key={m.id}
+                  className="flex items-center justify-between py-2 px-3 rounded-xl bg-muted text-sm"
+                >
+                  <span className="text-foreground font-medium">{m.counsellorName}</span>
+                  <span className="text-muted-foreground">{formatMeetDate(m.datetime)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Action items */}
@@ -113,8 +159,8 @@ export default function CarePlan() {
           </div>
         </div>
 
-        {/* Async chat */}
-        <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
+        {/* Async chat – scroll target when navigating from Counsellors "Message" */}
+        <div id="message" ref={messageSectionRef} className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
           <div className="p-4 border-b border-border flex items-center gap-2">
             <MessageCircle className="w-4 h-4 text-primary" />
             <h2 className="font-serif text-lg text-foreground">Async Chat with Dr. Priya Sharma</h2>
