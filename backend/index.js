@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
+import { getInsights, getSignalsOnly } from "./services/insights.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -120,10 +121,6 @@ app.delete("/messages/:session_id", (req, res) => {
 });
 
 
-app.listen(5000, () => {
-  console.log("Server running on http://localhost:5000");
-});
-
 // -----------------------------------------------------------------------------------------------------
 // Passive writing 
 // -----------------------------------------------------------------------------------------------------
@@ -199,4 +196,33 @@ app.get("/passive-writing/:session_id", (req, res) => {
   }
 
   res.json(data[session_id]);
+});
+
+// -----------------------------------------------------------------------------------------------------
+// Insights & signals (NLP from active + passive writing)
+// -----------------------------------------------------------------------------------------------------
+
+app.get("/api/insights", (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const payload = getInsights(forceRefresh);
+    res.json(payload);
+  } catch (err) {
+    console.error("GET /api/insights error:", err);
+    res.status(500).json({ error: "Failed to compute insights" });
+  }
+});
+
+app.get("/api/signals", (req, res) => {
+  try {
+    const signals = getSignalsOnly();
+    res.json({ signals });
+  } catch (err) {
+    console.error("GET /api/signals error:", err);
+    res.status(500).json({ error: "Failed to get signals", signals: [] });
+  }
+});
+
+app.listen(5000, () => {
+  console.log("Server running on http://localhost:5000");
 });
