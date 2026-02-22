@@ -69,6 +69,8 @@ export default function Journal() {
   const [journalLogs, setJournalLogs] = useState<JournalLog[]>([]);
   const [isPassiveSaved, setIsPassiveSaved] = useState(false);  
   const [sessionId, setSessionId] = useState<string>(() => {
+    const existing = localStorage.getItem("journal_session_id");
+    if (existing) return existing;
     const newId = crypto.randomUUID();
     localStorage.setItem("journal_session_id", newId);
     return newId;
@@ -82,6 +84,9 @@ export default function Journal() {
     return newId;
   });
 
+  const [passiveContent, setPassiveContent] = useState("");
+  const [passiveLogs, setPassiveLogs] = useState<Array<{ sessionId: string; content: string; updated_at: string }>>([]);
+
   // Persist session id so it survives page reloads
   useEffect(() => {
     localStorage.setItem("journal_session_id", sessionId);
@@ -94,22 +99,76 @@ export default function Journal() {
     { mode: "photo", icon: Camera, label: "Photo" },
   ];
 
+  // Load chat session from database (JSON) on mount – show logs that are stored
   useEffect(() => {
-    // Load previous journal logs from localStorage
     setJournalLogs(loadLogs());
 
-    getGeminiResponse("Give a short, warm motivational greeting for someone journaling about their mental health well-being. Keep it to 1-2 sentences.")
-      .then((text) => {
-        setMessages([{ role: "ai", text }]);
-        // Persist the AI greeting to backend
-        saveMessageToBackend("ai", text, sessionId);
+    fetch(`http://localhost:5000/messages/${sessionId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.messages?.length > 0) {
+          setMessages(
+            data.messages.map((m: { role: string; text: string }) => ({
+              role: (m.role === "user" ? "user" : "ai") as "user" | "ai",
+              text: m.text,
+            }))
+          );
+          return;
+        }
+        getGeminiResponse("Give a short, warm motivational greeting for someone journaling about their mental health well-being. Keep it to 1-2 sentences.")
+          .then((text) => {
+            setMessages([{ role: "ai", text }]);
+            saveMessageToBackend("ai", text, sessionId);
+          })
+          .catch(() => {
+            const fallback = "Hey, welcome back. How are you feeling today?";
+            setMessages([{ role: "ai", text: fallback }]);
+            saveMessageToBackend("ai", fallback, sessionId);
+          });
       })
       .catch(() => {
-        const fallback = "Hey, welcome back. How are you feeling today?";
-        setMessages([{ role: "ai", text: fallback }]);
-        saveMessageToBackend("ai", fallback, sessionId);
+        getGeminiResponse("Give a short, warm motivational greeting for someone journaling about their mental health well-being. Keep it to 1-2 sentences.")
+          .then((text) => {
+            setMessages([{ role: "ai", text }]);
+            saveMessageToBackend("ai", text, sessionId);
+          })
+          .catch(() => {
+            const fallback = "Hey, welcome back. How are you feeling today?";
+            setMessages([{ role: "ai", text: fallback }]);
+            saveMessageToBackend("ai", fallback, sessionId);
+          });
       });
-  }, []);
+  }, [sessionId]);
+
+  // Load passive writing from database when opening notebook view
+  useEffect(() => {
+    if (view !== "notebook") return;
+    fetch(`http://localhost:5000/passive-writing/${passiveSessionId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.content) setPassiveContent(data.content);
+      })
+      .catch(() => {});
+  }, [view, passiveSessionId]);
+
+  const refreshPassiveLogs = () => {
+    fetch("http://localhost:5000/passive-writing")
+      .then((res) => (res.ok ? res.json() : {}))
+      .then((data) => {
+        const list = Object.entries(data || {}).map(([id, val]: [string, { content?: string; updated_at?: string }]) => ({
+          sessionId: id,
+          content: val?.content ?? "",
+          updated_at: val?.updated_at ?? "",
+        }));
+        setPassiveLogs(list.filter((l) => l.content.trim()));
+      })
+      .catch(() => {});
+  };
+
+  // Load all passive logs from database when notebook view is shown
+  useEffect(() => {
+    if (view === "notebook") refreshPassiveLogs();
+  }, [view]);
   
 
   const saveMessageToBackend = (role: "user" | "ai", text: string, sid: string) => {
@@ -303,6 +362,7 @@ export default function Journal() {
             <button
               onClick={() => {
                 setEntry("");
+                setPassiveContent("");
                 const newId = crypto.randomUUID();
                 setPassiveSessionId(newId);
                 localStorage.setItem("passive_session_id", newId);
@@ -354,40 +414,39 @@ export default function Journal() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              {/* Notebook text input */}
+              {/* Notebook text input – loaded from and saved to database (JSON) */}
               <div className="bg-card rounded-2xl border border-border shadow-card p-5">
                 <textarea
-                  value={entry}
-                  onChange={(e) => setEntry(e.target.value)}
-                  placeholder="Write in your notebook…"
+                  value={passiveContent}
+                  onChange={(e) => setPassiveContent(e.target.value)}
+                  placeholder="Write in your notebook… (saved to your logs)"
                   className="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none min-h-[100px]"
                   rows={4}
                 />
                 <div className="flex justify-end mt-2">
-                <Button
-                  size="sm"
-                  disabled={isPassiveSaved}
-                  variant={isPassiveSaved ? "outline" : "default"}
-                  onClick={() => {
-                    if (entry.trim()) {
-                      savePassiveWriting(entry.trim());
-                      setIsPassiveSaved(true);
-                      setTimeout(() => {
-                        setIsPassiveSaved(false);
-                      }, 3000);
-                    }
-                  }}
-                  className={`rounded-xl transition-all duration-300 ${
-                    isPassiveSaved
-                      ? "border-green-500 text-green-600 bg-green-50 opacity-100 disabled:opacity-100"
-                      : ""
-                  }`}
+                  <Button
+                    size="sm"
+                    disabled={isPassiveSaved}
+                    variant={isPassiveSaved ? "outline" : "default"}
+                    onClick={() => {
+                      if (passiveContent.trim()) {
+                        savePassiveWriting(passiveContent.trim());
+                        refreshPassiveLogs();
+                        setIsPassiveSaved(true);
+                        setTimeout(() => setIsPassiveSaved(false), 3000);
+                      }
+                    }}
+                    className={`rounded-xl transition-all duration-300 ${
+                      isPassiveSaved
+                        ? "border-green-500 text-green-600 bg-green-50 opacity-100 disabled:opacity-100"
+                        : ""
+                    }`}
                   >
                     {isPassiveSaved ? "✓ Saved" : "Save Entry"}
-                </Button>
+                  </Button>
                 </div>
               </div>
-              <NotebookView />
+              <NotebookView passiveLogs={passiveLogs} />
             </motion.div>
           ) : (
             <motion.div

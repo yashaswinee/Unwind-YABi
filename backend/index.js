@@ -200,6 +200,16 @@ app.post("/passive-writing", (req, res) => {
   }
 });
 
+app.get("/passive-writing", (req, res) => {
+  try {
+    const data = readPassiveData();
+    res.json(data);
+  } catch (err) {
+    console.error("GET /passive-writing error:", err);
+    res.status(500).json({});
+  }
+});
+
 app.get("/passive-writing/:session_id", (req, res) => {
   const { session_id } = req.params;
 
