@@ -41,7 +41,7 @@ function writeData(data) {
 }
 
 app.get("/", (req, res) => {
-  res.status(200).send("Backend is working 🚀");
+  res.status(200).send("Backend is working");
 });
 
 app.post("/messages", (req, res) => {
@@ -57,11 +57,15 @@ app.post("/messages", (req, res) => {
     const data = readData();
 
     if (!data[session_id]) {
-      data[session_id] = {
-        title: title || text.slice(0, 30),
-        created_at: new Date().toISOString(),
-        messages: [],
-      };
+    const now = new Date();
+    const day = now.getDate();
+    const month = now.toLocaleString('default', { month: 'short' });
+
+    data[session_id] = {
+      title: title || `${day} ${month}`,
+      created_at: now.toISOString(),
+      messages: [],
+    };
     }
 
     const newMessage = {

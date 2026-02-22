@@ -1,54 +1,87 @@
-import { motion } from "framer-motion";
-import { MessageCircle, Clock, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MessageCircle } from "lucide-react";
 
-export type ChatSession = {
-  id: string;
-  preview: string;
-  timestamp: string;
-  messageCount: number;
+type Session = {
+  session_id: string;
+  title: string;
+  created_at: string;
+  messages: { role: string; text: string }[];
 };
 
-const mockSessions: ChatSession[] = [
-  { id: "s1", preview: "Talked about feeling coded into a corner after the sprint…", timestamp: "2 hours ago", messageCount: 8 },
-  { id: "s2", preview: "Explored Sunday evening anxiety and the pattern before sprint weeks…", timestamp: "Yesterday", messageCount: 14 },
-  { id: "s3", preview: "Discussed imposter syndrome after the code review feedback…", timestamp: "3 days ago", messageCount: 6 },
-];
-
-interface ChatHistoryProps {
+export default function ChatHistory({
+  onResume,
+}: {
   onResume: (sessionId: string) => void;
-}
+}) {
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default function ChatHistory({ onResume }: ChatHistoryProps) {
+  useEffect(() => {
+    fetch("http://localhost:5000/messages")
+      .then((res) => res.json())
+      .then((data) => {
+        const formatted: Session[] = Object.entries(data).map(
+          ([session_id, value]: any) => {
+            const date = new Date(value.created_at);
+            const day = date.getDate();
+            const month = date.toLocaleString('default', { month: 'long' });
+
+            return {
+              session_id,
+              title: value.title || `${day} ${month}`,
+              created_at: value.created_at,
+              messages: value.messages || [],
+            };
+          }
+        );
+
+        // Sort newest first
+        formatted.sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
+        );
+
+        setSessions(formatted);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return <p className="text-sm text-muted-foreground">Loading conversations...</p>;
+  }
+
+  if (sessions.length === 0) {
+    return <p className="text-sm text-muted-foreground">No past conversations found.</p>;
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-muted-foreground mb-1">
         <MessageCircle className="w-4 h-4" />
-        <span className="text-xs uppercase tracking-wide font-medium">Continue a conversation</span>
+        <span className="text-xs uppercase tracking-wide font-medium">
+          Continue a conversation
+        </span>
       </div>
 
-      {mockSessions.map((session, i) => (
-        <motion.button
-          key={session.id}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.05 }}
-          onClick={() => onResume(session.id)}
-          className="w-full text-left bg-card rounded-xl border border-border p-4 shadow-card hover:shadow-soft hover:border-primary/30 transition-all group"
+      {sessions.map((session) => (
+        <div
+          key={session.session_id}
+          onClick={() => onResume(session.session_id)}
+          className="p-4 rounded-xl border border-border bg-card cursor-pointer hover:shadow-md transition-all"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground line-clamp-2">{session.preview}</p>
-              <div className="flex items-center gap-3 mt-2">
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">{session.timestamp}</span>
-                </div>
-                <span className="text-xs text-muted-foreground">{session.messageCount} messages</span>
-              </div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors mt-1 flex-shrink-0" />
-          </div>
-        </motion.button>
+          <h3 className="text-sm font-semibold">
+            {session.title}
+          </h3>
+
+          <p className="text-xs text-muted-foreground mt-1">
+            {new Date(session.created_at).toLocaleDateString()} •{" "}
+            {session.messages.length} messages
+          </p>
+        </div>
       ))}
     </div>
   );
