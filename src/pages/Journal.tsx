@@ -67,6 +67,14 @@ export default function Journal() {
   const [messages, setMessages] = useState(aiMessages);
   const [view, setView] = useState<View>("chat");
   const [journalLogs, setJournalLogs] = useState<JournalLog[]>([]);
+  const [sessionId] = useState<string>(
+    () => localStorage.getItem("journal_session_id") || crypto.randomUUID()
+  );
+
+  // Persist session id so it survives page reloads
+  useEffect(() => {
+    localStorage.setItem("journal_session_id", sessionId);
+  }, [sessionId]);
 
   const inputModes: { mode: InputMode; icon: typeof Type; label: string }[] = [
     { mode: "text", icon: Type, label: "Write" },
@@ -104,6 +112,18 @@ export default function Journal() {
     };
     saveLog(log);
     setJournalLogs((prev) => [...prev, log]);
+
+    // Persist to backend
+    fetch("http://localhost:5000/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        user_text: userMessage,
+      }),
+    }).catch((err) => console.warn("Backend save failed:", err));
 
     setMessages((prev) => [...prev, { role: "user" as const, text: userMessage }]);
     setEntry("");

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1213cd73-09c3-42c1-a20b-02602effc7cd",
+    "session_id": "6826f30c-68d7-405a-a658-ccfc488b4454",
+    "user_text": "hi",
+    "timestamp": "2026-02-22T06:26:52.005Z"
+  },
+  {
+    "id": "2b7fc732-8636-448e-a2c2-cd6e6fcea936",
+    "session_id": "6826f30c-68d7-405a-a658-ccfc488b4454",
+    "user_text": "does this create new session or does it continue",
+    "timestamp": "2026-02-22T06:27:42.251Z"
+  },
+  {
+    "id": "f34d4229-2541-497a-8ff9-8fd5e843ebaf",
+    "session_id": "6826f30c-68d7-405a-a658-ccfc488b4454",
+    "user_text": "ok creates new session everytime",
+    "timestamp": "2026-02-22T06:27:57.459Z"
+  }
+]
