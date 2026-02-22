@@ -67,22 +67,26 @@ export default function ChatHistory({
         </span>
       </div>
 
-      {sessions.map((session) => (
-        <div
-          key={session.session_id}
-          onClick={() => onResume(session.session_id)}
-          className="p-4 rounded-xl border border-border bg-card cursor-pointer hover:shadow-md transition-all"
-        >
-          <h3 className="text-sm font-semibold">
-            {session.title}
-          </h3>
+      {sessions
+        .filter((session) =>
+          session.messages.filter((msg) => msg.role === "user").length > 0
+        )
+        .map((session) => (
+          <div
+            key={session.session_id}
+            onClick={() => onResume(session.session_id)}
+            className="p-4 rounded-xl border border-border bg-card cursor-pointer hover:shadow-md transition-all"
+          >
+            <h3 className="text-sm font-semibold">
+              {session.title}
+            </h3>
 
-          <p className="text-xs text-muted-foreground mt-1">
-            {new Date(session.created_at).toLocaleDateString()} •{" "}
-            {session.messages.length} messages
-          </p>
-        </div>
-      ))}
+            <p className="text-xs text-muted-foreground mt-1">
+              {new Date(session.created_at).toLocaleDateString()} •{" "}
+              {session.messages.filter((msg) => msg.role === "user").length} messages
+            </p>
+          </div>
+        ))}
     </div>
   );
 }
