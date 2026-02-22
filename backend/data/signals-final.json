@@ -1,0 +1,20 @@
+[
+  {
+    "id": "intervention_001",
+    "text": "We noticed you've been logging entries past midnight for 3 days in a row. Protect your cognitive load—try setting a strict screen-curfew tonight.",
+    "type": "wellbeing_nudge",
+    "createdAt": "2026-02-18T08:15:00.000Z"
+  },
+  {
+    "id": "intervention_002",
+    "text": "You've successfully completed a 5-day journaling streak. Small, consistent steps build resilience. Keep it up!",
+    "type": "positive_reinforcement",
+    "createdAt": "2026-02-20T10:05:30.000Z"
+  },
+  {
+    "id": "intervention_003",
+    "text": "Your recent entries show signs of high cognitive fatigue. Would you like to try a 3-minute guided breathing exercise before your next meeting?",
+    "type": "actionable_resource",
+    "createdAt": "2026-02-21T14:22:15.890Z"
+  }
+]

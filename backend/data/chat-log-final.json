@@ -1,0 +1,32 @@
+{
+  "chat_session_948a2b1": {
+    "title": "Late night deployment stress check-in",
+    "created_at": "2026-02-19T23:15:00.000Z",
+    "messages": [
+      {
+        "id": "msg_001",
+        "role": "user",
+        "text": "I can't sleep. We have a major production release tomorrow and I'm terrified I missed a critical bug in the migration script.",
+        "timestamp": "2026-02-19T23:15:12.102Z"
+      },
+      {
+        "id": "msg_002",
+        "role": "ai",
+        "text": "It's completely understandable to feel tense before a big release. Let's take a breath. Have you run the automated test suite on the staging environment?",
+        "timestamp": "2026-02-19T23:15:14.330Z"
+      },
+      {
+        "id": "msg_003",
+        "role": "user",
+        "text": "Yeah, tests passed. But what if there's an edge case we didn't write a test for? The whole system could go down.",
+        "timestamp": "2026-02-19T23:16:05.411Z"
+      },
+      {
+        "id": "msg_004",
+        "role": "ai",
+        "text": "It sounds like you're experiencing some 'catastrophizing'—imagining the worst possible outcome. Since the tests passed, the most likely scenario is a smooth deployment. If an edge case does happen, what is the rollback plan?",
+        "timestamp": "2026-02-19T23:16:10.890Z"
+      }
+    ]
+  }
+}

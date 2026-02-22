@@ -17,4 +17,4 @@ server/logs/
 Thumbs.db
 
 # Chat log data
-backend/data/*
+# backend/data/*

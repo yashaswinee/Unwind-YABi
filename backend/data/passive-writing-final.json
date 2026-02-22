@@ -1,0 +1,12 @@
+{
+  "entry_a1b2c3d4": {
+    "created_at": "2026-02-17T18:45:21.134Z",
+    "content": "Standup was brutal today. I feel like everyone is shipping features twice as fast as I am. I spent 4 hours tracking down a memory leak and still haven't fixed it. Feeling really inadequate.",
+    "updated_at": "2026-02-17T18:48:10.000Z"
+  },
+  "entry_e5f6g7h8": {
+    "created_at": "2026-02-19T09:12:05.442Z",
+    "content": "Finally fixed the leak. It was a lingering websocket connection issue. I feel a bit of relief, but honestly, I'm just exhausted. The weekend can't come fast enough. I need to disconnect completely.",
+    "updated_at": "2026-02-19T09:12:05.442Z"
+  }
+}
