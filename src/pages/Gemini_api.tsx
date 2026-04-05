@@ -1,10 +1,8 @@
-
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-const GEMINI_ENDPOINT =
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-export async function getGeminiResponse(prompt: string): Promise<string> {
+async function callGemini(prompt: string): Promise<string> {
   const response = await fetch(GEMINI_ENDPOINT, {
     method: "POST",
     headers: {
@@ -28,4 +26,38 @@ export async function getGeminiResponse(prompt: string): Promise<string> {
 
   const data = await response.json();
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
+export async function getGeminiResponse(prompt: string): Promise<string> {
+  return callGemini(prompt);
+}
+
+export async function getTitle(input: string): Promise<string> {
+  const trimmedInput = input.trim();
+  if (!trimmedInput) {
+    return "Untitled";
+  }
+
+  const titlePrompt = `Create one short, crisp title from the text below.
+Rules:
+- Max 6 words
+- No quotes
+- No emojis
+- Return only the title text
+
+Text:
+${trimmedInput}`;
+
+  const rawTitle = await callGemini(titlePrompt);
+  const cleanTitle = rawTitle
+    .replace(/[\n\r]+/g, " ")
+    .replace(/^['"“”]+|['"“”]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleanTitle) {
+    return "Untitled";
+  }
+
+  return cleanTitle.split(" ").slice(0, 6).join(" ");
 }

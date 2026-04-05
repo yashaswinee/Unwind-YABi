@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
+import { getTitle } from "@/pages/Gemini_api";
 
 type Session = {
   session_id: string;
   title: string;
   created_at: string;
   messages: { role: string; text: string }[];
+};
+
+type SessionPayload = {
+  title?: string;
+  created_at: string;
+  messages?: { role: string; text: string }[];
 };
 
 export default function ChatHistory({
@@ -17,41 +24,63 @@ export default function ChatHistory({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:5000/messages")
-      .then((res) => res.json())
-      .then((data) => {
-        const formatted: Session[] = Object.entries(data).map(
-          ([session_id, value]: any) => {
+    let isMounted = true;
+
+    const loadSessions = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/messages");
+        const data = await res.json();
+        const typedData = data as Record<string, SessionPayload>;
+
+        const formatted: Session[] = await Promise.all(
+          Object.entries(typedData).map(async ([session_id, value]) => {
             const messages = value.messages || [];
             const firstUser = messages.find((m: { role: string }) => m.role === "user");
             const raw = firstUser?.text?.trim() ?? "";
-            const contextTitle = raw
-              ? raw.length > 56
-                ? raw.slice(0, 56).trim() + "…"
-                : raw
-              : value.title || "New conversation";
+
+            let contextTitle = value.title || "New conversation";
+
+            if (raw) {
+              try {
+                contextTitle = await getTitle(raw);
+              } catch {
+                contextTitle = raw.length > 56 ? raw.slice(0, 56).trim() + "…" : raw;
+              }
+            }
+
             return {
               session_id,
               title: contextTitle,
               created_at: value.created_at,
               messages,
             };
-          }
+          })
         );
 
-        // Sort newest first
         formatted.sort(
           (a, b) =>
             new Date(b.created_at).getTime() -
             new Date(a.created_at).getTime()
         );
 
+        if (!isMounted) {
+          return;
+        }
+
         setSessions(formatted);
         setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
+      } catch {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadSessions();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading) {
