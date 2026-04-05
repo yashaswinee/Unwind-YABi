@@ -6,7 +6,7 @@ import AppLayout from "@/components/AppLayout";
 import NotebookView from "@/components/journal/NotebookView";
 import ChatHistory from "@/components/journal/ChatHistory";
 import DynamicSuggestions from "@/components/journal/DynamicSuggestions";
-import { getGeminiResponse } from "./Gemini_api";
+import { getGeminiResponse, getTitle } from "./Gemini_api";
 
 type InputMode = "text" | "voice" | "draw" | "photo";
 type AiMode = "quiet" | "active";
@@ -171,7 +171,12 @@ export default function Journal() {
   }, [view]);
   
 
-  const saveMessageToBackend = (role: "user" | "ai", text: string, sid: string) => {
+  const saveMessageToBackend = (
+    role: "user" | "ai",
+    text: string,
+    sid: string,
+    title?: string
+  ) => {
     fetch("http://localhost:5000/messages", {
       method: "POST",
       headers: {
@@ -181,6 +186,7 @@ export default function Journal() {
         session_id: sid,
         role,
         text,
+        title,
       }),
     }).catch((err) => console.warn("Backend save failed:", err));
   };
@@ -202,6 +208,7 @@ export default function Journal() {
   const handleSend = async () => {
     if (!entry.trim()) return;
     const userMessage = entry;
+    const hasUserMessages = messages.some((m) => m.role === "user");
 
     // Log the user's message with date and time
     const now = new Date();
@@ -213,8 +220,19 @@ export default function Journal() {
     saveLog(log);
     setJournalLogs((prev) => [...prev, log]);
 
-    // Persist user message to backend
-    saveMessageToBackend("user", userMessage, sessionId);
+    let generatedTitle: string | undefined;
+    if (!hasUserMessages) {
+      try {
+        generatedTitle = await getTitle(userMessage);
+      } catch {
+        const trimmed = userMessage.trim();
+        generatedTitle =
+          trimmed.length > 56 ? trimmed.slice(0, 56).trim() + "…" : trimmed;
+      }
+    }
+
+    // Persist user message (and title for first user message) to backend
+    saveMessageToBackend("user", userMessage, sessionId, generatedTitle);
 
     setMessages((prev) => [...prev, { role: "user" as const, text: userMessage }]);
     setEntry("");
@@ -309,6 +327,10 @@ export default function Journal() {
       setView("chat");
     }
   };
+
+  const latestUserMessage = [...messages]
+    .reverse()
+    .find((message) => message.role === "user")?.text || "";
 
   return (
     <AppLayout>
@@ -532,7 +554,7 @@ export default function Journal() {
         </AnimatePresence>
 
         {/* Dynamic Suggestions */}
-        <DynamicSuggestions journalContent={entry + " " + messages.map((m) => m.text).join(" ")} />
+        <DynamicSuggestions latestUserMessage={latestUserMessage} />
       </div>
     </AppLayout>
   );

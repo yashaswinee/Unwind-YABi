@@ -84,8 +84,14 @@ app.post("/messages", (req, res) => {
     if (userMessages.length === 1) {
       const trimmed = text.trim();
       const maxLen = 56;
-      data[session_id].title =
-        trimmed.length > maxLen ? trimmed.slice(0, maxLen).trim() + "…" : trimmed || data[session_id].title;
+      const providedTitle = typeof title === "string" ? title.trim() : "";
+
+      if (providedTitle) {
+        data[session_id].title = providedTitle;
+      } else {
+        data[session_id].title =
+          trimmed.length > maxLen ? trimmed.slice(0, maxLen).trim() + "…" : trimmed || data[session_id].title;
+      }
     }
 
     writeData(data);

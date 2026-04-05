@@ -28,6 +28,11 @@ const THEME_KEYWORDS = {
     "workload", "stress", "stressed", "busy", "exhausted", "meeting", "boss", "job",
     "career", "project", "delivery", "overtime", "burnout", "burned out",
   ],
+  "Stress / anxiety": [
+    "stress", "stressed", "anxiety", "anxious", "panic", "panicking", "worry", "worried",
+    "tense", "restless", "racing thoughts", "can't focus", "cant focus", "work pressure",
+    "on edge", "overthinking", "nervous", "fear", "fearful",
+  ],
   "Sleep quality": [
     "sleep", "slept", "insomnia", "tired", "rest", "night", "wake", "dream",
     "nightmare", "fatigue", "exhausted", "can't sleep", "overslept",

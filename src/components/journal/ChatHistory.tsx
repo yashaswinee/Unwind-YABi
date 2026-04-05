@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
-import { getTitle } from "@/pages/Gemini_api";
 
 type Session = {
   session_id: string;
@@ -32,21 +31,14 @@ export default function ChatHistory({
         const data = await res.json();
         const typedData = data as Record<string, SessionPayload>;
 
-        const formatted: Session[] = await Promise.all(
-          Object.entries(typedData).map(async ([session_id, value]) => {
+        const formatted: Session[] = Object.entries(typedData).map(([session_id, value]) => {
             const messages = value.messages || [];
             const firstUser = messages.find((m: { role: string }) => m.role === "user");
             const raw = firstUser?.text?.trim() ?? "";
 
-            let contextTitle = value.title || "New conversation";
-
-            if (raw) {
-              try {
-                contextTitle = await getTitle(raw);
-              } catch {
-                contextTitle = raw.length > 56 ? raw.slice(0, 56).trim() + "…" : raw;
-              }
-            }
+            const contextTitle =
+              value.title?.trim() ||
+              (raw ? (raw.length > 56 ? raw.slice(0, 56).trim() + "…" : raw) : "New conversation");
 
             return {
               session_id,
@@ -54,8 +46,7 @@ export default function ChatHistory({
               created_at: value.created_at,
               messages,
             };
-          })
-        );
+          });
 
         formatted.sort(
           (a, b) =>
