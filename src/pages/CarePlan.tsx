@@ -22,7 +22,7 @@ const milestones = [
   { level: 6, label: "Mood Stabilised", unlocked: false },
 ];
 
-const chatMessages = [
+const initialChatMessages = [
   { role: "counsellor" as const, text: "Great session today. Remember — those thoughts aren't facts, they're patterns we can rewire. How are you feeling about the action items?", time: "2h ago" },
   { role: "user" as const, text: "Feeling optimistic actually. The breathing exercise already helped last night.", time: "1h ago" },
   { role: "counsellor" as const, text: "That's wonderful to hear! Small wins build momentum. Keep noting how you feel before and after — we'll review together.", time: "45m ago" },
@@ -30,6 +30,8 @@ const chatMessages = [
 
 export default function CarePlan() {
   const [items, setItems] = useState(actionItems);
+  const [chatMsgs, setChatMsgs] = useState(initialChatMessages);
+  const [msgInput, setMsgInput] = useState("");
   const location = useLocation();
   const messageSectionRef = useRef<HTMLDivElement>(null);
 
@@ -166,7 +168,7 @@ export default function CarePlan() {
             <h2 className="font-serif text-lg text-foreground">Async Chat with Dr. Priya Sharma</h2>
           </div>
           <div className="p-5 space-y-4 max-h-[300px] overflow-y-auto">
-            {chatMessages.map((msg, i) => (
+            {chatMsgs.map((msg, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 10 }}
@@ -193,10 +195,26 @@ export default function CarePlan() {
             <div className="flex gap-3">
               <input
                 type="text"
+                value={msgInput}
+                onChange={(e) => setMsgInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && msgInput.trim()) {
+                    setChatMsgs((prev) => [...prev, { role: "user", text: msgInput.trim(), time: "Just now" }]);
+                    setMsgInput("");
+                  }
+                }}
                 placeholder="Message your counsellor..."
                 className="flex-1 bg-muted rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
-              <button className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-1.5">
+              <button 
+                onClick={() => {
+                  if (msgInput.trim()) {
+                    setChatMsgs((prev) => [...prev, { role: "user", text: msgInput.trim(), time: "Just now" }]);
+                    setMsgInput("");
+                  }
+                }}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-1.5"
+              >
                 Send <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>

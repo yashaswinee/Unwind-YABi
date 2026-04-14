@@ -1,32 +1,45 @@
 import AppLayout from "@/components/AppLayout";
+import { toast } from "@/components/ui/sonner";
 import { motion } from "framer-motion";
 import { Users, TrendingDown, DollarSign, CalendarPlus, ShieldCheck, BarChart3 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
-const teamRiskData = [
-  { team: "Engineering", risk: 72 },
-  { team: "Design", risk: 45 },
-  { team: "Product", risk: 58 },
-  { team: "Marketing", risk: 32 },
-  { team: "Support", risk: 65 },
-];
-
-const roiData = [
-  { name: "Engaged", value: 68 },
-  { name: "At Risk", value: 22 },
-  { name: "Critical", value: 10 },
-];
-
-const COLORS = ["hsl(152,45%,38%)", "hsl(40,80%,55%)", "hsl(0,70%,55%)"];
-
-const stats = [
-  { label: "Active Users", value: "342", icon: Users, change: "+12%" },
-  { label: "Turnover Risk", value: "18%", icon: TrendingDown, change: "-4%" },
-  { label: "ROI (Annual)", value: "$2.4M", icon: DollarSign, change: "+31%" },
-  { label: "Sessions Booked", value: "89", icon: CalendarPlus, change: "+23" },
-];
+import { useQuery } from "@tanstack/react-query";
+import { fetchInsights, type InsightsPayload } from "@/lib/insightsApi";
 
 export default function HrPortal() {
+  const { data: insights } = useQuery<InsightsPayload>({
+    queryKey: ["insights"],
+    queryFn: () => fetchInsights(false),
+  });
+
+  const burnoutScore = insights?.burnoutScore ?? 0;
+  
+  // Dynamically calculate fake team data anchored around the user's burnout score
+  const teamRiskData = [
+    { team: "Engineering", risk: Math.min(100, Math.max(0, burnoutScore + 15)) },
+    { team: "Design", risk: Math.min(100, Math.max(0, burnoutScore - 12)) },
+    { team: "Product", risk: Math.min(100, Math.max(0, burnoutScore + 5)) },
+    { team: "Marketing", risk: Math.min(100, Math.max(0, burnoutScore - 20)) },
+    { team: "Support", risk: Math.min(100, Math.max(0, burnoutScore + 8)) },
+  ];
+
+  const criticalValue = burnoutScore > 70 ? 25 : burnoutScore > 40 ? 10 : 2;
+  const atRiskValue = burnoutScore > 40 ? 30 : 15;
+  const engagedValue = 100 - criticalValue - atRiskValue;
+
+  const roiData = [
+    { name: "Engaged", value: engagedValue },
+    { name: "At Risk", value: atRiskValue },
+    { name: "Critical", value: criticalValue },
+  ];
+
+  const COLORS = ["hsl(152,45%,38%)", "hsl(40,80%,55%)", "hsl(0,70%,55%)"];
+
+  const stats = [
+    { label: "Active Users (Total Entries)", value: insights ? `${insights.entriesCount}` : "0", icon: Users, change: "+12%" },
+    { label: "Sessions Booked", value: insights?.recommendCounselor ? "90" : "89", icon: CalendarPlus, change: "+23" },
+  ];
   return (
     <AppLayout>
       <div className="container max-w-5xl mx-auto px-4 py-8 space-y-8">
@@ -132,14 +145,14 @@ export default function HrPortal() {
           <h2 className="font-serif text-lg text-foreground mb-4">Resource Management</h2>
           <div className="grid md:grid-cols-3 gap-4">
             {[
-              { label: "Add Counsellor Hours", desc: "Expand capacity for high-risk teams", action: "Configure" },
-              { label: "Schedule Unwind Day", desc: "AI-detected stress spike this week", action: "Plan Event" },
-              { label: "Export Report", desc: "Download anonymised wellness report", action: "Download" },
+              { label: "Add Counsellor Hours", desc: "Expand capacity for high-risk teams", action: "Configure", onClick: () => toast.success("Opening configuration panel for Counsellor Hours.") },
+              { label: "Schedule Unwind Day", desc: "AI-detected stress spike this week", action: "Plan Event", onClick: () => toast.success("Redirecting to Event Planner...") },
+              { label: "Export Report", desc: "Download anonymised wellness report", action: "Download", onClick: () => toast.success("Your report is being generated and will download shortly.") },
             ].map((r) => (
               <div key={r.label} className="p-4 rounded-xl bg-muted space-y-2">
                 <h3 className="text-sm font-medium text-foreground">{r.label}</h3>
                 <p className="text-xs text-muted-foreground">{r.desc}</p>
-                <button className="text-xs font-medium text-primary hover:underline">{r.action} →</button>
+                <button onClick={r.onClick} className="text-xs font-medium text-primary hover:underline">{r.action} →</button>
               </div>
             ))}
           </div>

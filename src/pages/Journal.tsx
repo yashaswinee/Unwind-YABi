@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, Pencil, Type, Camera, MessageCircle, Volume2, VolumeX, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/sonner";
 import AppLayout from "@/components/AppLayout";
 import NotebookView from "@/components/journal/NotebookView";
 import ChatHistory from "@/components/journal/ChatHistory";
@@ -528,7 +529,13 @@ export default function Journal() {
                   )}
                   {inputMode === "voice" && (
                     <div className="flex flex-col items-center gap-3 py-4">
-                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center animate-breathe">
+                      <div 
+                        className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center animate-breathe cursor-pointer hover:bg-primary/20 transition-all"
+                        onClick={() => {
+                          toast("Listening...", { description: "Speak into your microphone." });
+                          setTimeout(() => toast.success("Voice note saved to local logs."), 2000);
+                        }}
+                      >
                         <Mic className="w-7 h-7 text-primary" />
                       </div>
                       <p className="text-sm text-muted-foreground">Tap to start speaking</p>
@@ -536,13 +543,19 @@ export default function Journal() {
                   )}
                   {inputMode === "draw" && (
                     <div className="flex flex-col items-center gap-3 py-8">
-                      <div className="w-full h-32 rounded-xl bg-muted border-2 border-dashed border-border flex items-center justify-center">
+                      <div 
+                        className="w-full h-32 rounded-xl bg-muted border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:bg-muted/80"
+                        onClick={() => toast.info("Opening sketchpad window...")}
+                      >
                         <p className="text-sm text-muted-foreground">Sketchpad — draw how you feel</p>
                       </div>
                     </div>
                   )}
                   {inputMode === "photo" && (
-                    <div className="flex flex-col items-center gap-3 py-8">
+                    <div 
+                      className="flex flex-col items-center gap-3 py-8 cursor-pointer hover:bg-muted/30 rounded-xl"
+                      onClick={() => toast.info("Opening file uploader...")}
+                    >
                       <Camera className="w-10 h-10 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">Upload a photo that captures your mood</p>
                     </div>

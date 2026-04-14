@@ -148,7 +148,7 @@ export default function Counsellors() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" size="sm" className="gap-2 rounded-xl">
+                  <Button variant="outline" size="sm" className="gap-2 rounded-xl" onClick={() => toast.info(`Playing introduction video for ${c.name}...`)}>
                     <Play className="w-3.5 h-3.5" />
                     Watch Intro
                   </Button>
